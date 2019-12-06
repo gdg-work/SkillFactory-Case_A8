@@ -1,0 +1,18 @@
+digraph user_paths {
+    # stages (or states of our finite automata)
+    rankdir="LR"; node[shape=box];
+
+    REG [label="Регистрация"];
+    TUTB [label="Начато\nобучение"];
+    TUTE [label="Закончено\nобучение"];
+    S_LVL [label="Выбор уровня\nсложности"];
+    S_FREE [label="Выбор набора\nбесплатных\nтренировок"];
+    BUY [label="Покупка\nплатных\nтренировок"]
+
+    # Transitions
+    REG -> {TUTB S_LVL};
+    TUTB -> {TUTE S_LVL};
+    TUTE -> {TUTB S_LVL};
+    S_LVL -> S_FREE;
+    S_FREE -> BUY;
+}
