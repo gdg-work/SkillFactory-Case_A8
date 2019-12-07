@@ -1,4 +1,7 @@
-## Ответы на некоторые вопросы
+# Анализ пользвательских событий (повторяю рассуждения из учебника, но использую по возможности SQL вместо Python.
+
+Мотивация такого подхода: конечно, всё можно загрузить в Pandas и пользоваться его методами.  Но ресурсы компьютера обычно
+ограничены, а тут у нас есть под рукой целая база данных, которая какие надо выборки и сортировки великолепно делает.
 
 > Сколько строк содержится в датафрейме events_df? (для ответа используйте данные за 2017 год)
 
@@ -29,9 +32,9 @@ where user_id in (select distinct user_id from case8.events where event_type='re
 ```
 dgolub=> with all_users as (
     SELECT DISTINCT user_id
-    FROM case8.events                                                                                                                             
+    FROM case8.events
     WHERE event_type = 'registration'
-    AND start_time BETWEEN '2017-01-01' AND '{2018-01-01}'
+    AND start_time BETWEEN '2017-01-01' AND '2018-01-01'
 )
 select count(e.selected_level) from case8.events as e join all_users as u using (user_id);
  count 
@@ -42,7 +45,7 @@ dgolub=> with all_users as (
     SELECT DISTINCT user_id
     FROM case8.events
     WHERE event_type = 'registration'
-    AND start_time BETWEEN '2017-01-01' AND '{2018-01-01}'
+    AND start_time BETWEEN '2017-01-01' AND '2018-01-01'
 )
 select count(*) from case8.events as e join all_users as u using (user_id);
  count 
@@ -50,12 +53,17 @@ select count(*) from case8.events as e join all_users as u using (user_id);
  66959
 ```
 
-Для удобства создал вью `evts17`, в котором только пользователи, зарегистрированные в 2017 году.
+Для удобства создал представление `evts17`, в котором только пользователи, зарегистрированные в 2017 году.
 
 ```
-dgolub=> create view evts17 as
-dgolub-> select * from case8.events
-dgolub-> where user_id in (select distinct user_id from case8.events where event_type='registration' and start_time between '2017-01-01' and '2018-01-01');
+create view evts17 as
+    select * from case8.events
+    where user_id in
+        (select distinct user_id from case8.events 
+         where event_type='registration' 
+         and 
+         start_time between '2017-01-01' and '2018-01-01'
+        );
 CREATE VIEW
 
 dgolub=> select count(*) from evts17;
@@ -64,7 +72,7 @@ dgolub=> select count(*) from evts17;
  66959
 ```
 
-Аналогично создал вью purs17, где покупки, совершённые зарегистрированными в 2017 пользователями:
+Аналогично создал представление purs17, где покупки, совершённые зарегистрированными в 2017 пользователями:
 
 ```
 create view purs17 as
@@ -84,7 +92,7 @@ dgolub=> select count(*) from purs17;
  1600
 ```
 
-Структура вью повторяет соответствующие таблицы (во вью выбраны все колонки):
+Структура представления повторяет соответствующие таблицы (в представление выбраны все колонки):
 
 ```
 dgolub=> \d evts17
@@ -128,12 +136,12 @@ dgolub=> select
      8342 |     8342 |      8342 |        0 |     8342 | 8342     
 ```
 
-> Как видно, этот срез датафрейма не содержит пропущенных значений в столбце selected_level,
-> но зато содержит пропуски в tutorial_id. Это связано с тем, что для событий типа level_choice
-> не предусмотрена запись параметра tutorial_id.
+> Как видно, этот срез датафрейма не содержит пропущенных значений в столбце `selected_level`,
+> но зато содержит пропуски в `tutorial_id`. Это связано с тем, что для событий типа level_choice
+> не предусмотрена запись параметра `tutorial_id`.
  
 > Теперь проверим аналогичные данные, но при условии, что срез будет содержать
-> данные о событиях tutorial_start и tutorial_finish
+> данные о событиях `tutorial_start` и `tutorial_finish`.
 
 ```
 dgolub=> select 
@@ -151,7 +159,7 @@ where event_type in ('tutorial_finish', 'tutorial_start');
     32954 |        0 |     32954 |    32954 |    32954 | 32954
 ```
 
-> Давайте оценим, какие уникальные события есть в колонках event_type и selected_level:
+> Давайте оценим, какие уникальные события есть в колонках `event_type` и `selected_level`:
 
 ```
 dgolub=> select distinct event_type from evts17;
@@ -173,7 +181,7 @@ dgolub=> select distinct selected_level from evts17;
  easy
 ```
 
-Обращаю внимание: во второй выдаче есть пропуск (NULL).  Но везде, где событие = `level_choice`, поле `selected_level` заполнено:
+Обращаю внимание: во второй выдаче есть пропуск (NULL).  Но везде, где событие = `level_choice` , поле `selected_level` заполнено:
 
 ```
 dgolub=> select distinct selected_level from evts17 where event_type='level_choice';
@@ -186,7 +194,7 @@ dgolub=> select distinct selected_level from evts17 where event_type='level_choi
 
 > Также оценим, какое количество пользователей совершали события:
 > ...
-> Сколько уникальных пользователей совершали события в датафрейме events_df? 
+> Сколько уникальных пользователей совершали события в датафрейме `events_df`? 
 > (для ответа используйте данные за 2017 год)
 
 ```
@@ -210,7 +218,10 @@ dgolub=> select count(*) from purs17;
   1600
 ```
 
-> Есть ли пропущенные значения в датафрейме purchase_df?
+Никаких других данных, кроме покупок, в представлении `purs17` не содержится, пользователи покупают
+тренировки (когда покупают) по одному разу.
+
+> Есть ли пропущенные значения в датафрейме `purchase_df`?
 
 ```
 dgolub=> select count(user_id) c_uid, count(start_time) c_time, count(amount) as c_amt, count(id) as c_id from purs17;
@@ -244,10 +255,7 @@ dgolub=> select distinct amount from purs17;
     200
 ```
 
-А вот для поиска квантилей (например, медианы) нужно явно поставить расширение Postfix ([quantile](https://pgxn.org/dist/quantile/)),
-к этому я пока не готов.
-
-UPD: На сайте [leafo.net](https://leafo.net/guides/postgresql-calculating-percentile.html) описаны
+Поиск медианы: На сайте [leafo.net](https://leafo.net/guides/postgresql-calculating-percentile.html) описаны
 функции `percentile_disc` и `percentile_cont`, которые добавлены в PostgreSQL начиная с версии 9.4.
 
 ```
@@ -260,7 +268,7 @@ dgolub=> select percentile_cont(0.5) within group (order by amount) from purs17;
 
 Персентиль 50% и есть медиана.
 
-## Анализ событий
+## Анализ событий (табшица events)
 
 > Для того, чтобы понимать, как пользователи переходят из этапа в этап, на каких этапах
 > возникают сложности, мы должны определить конверсию на каждом из этапов воронки. То
@@ -304,7 +312,7 @@ dgolub=> select count(distinct user_id) from evts17 where event_type='tutorial_s
 ```
 
 Событий заметно больше, чем уникальных пользователей, которые их совершают.
-Видимо, заметная доля пользователей проходит обучение более одного раза.
+Видимо, заметная доля пользователей начинает обучение более одного раза.
 
 ### Исследуем пользователей, перешедших к обучению
 
@@ -344,3 +352,209 @@ te_ts_pct
 > В нашем приложении достаточно хороший процент прохождения обучения. Но есть куда
 > стремиться для его увеличения. Подумайте о том, как показатель прохождения может
 > влиять на весь путь пользователя в дальнейшем.
+
+Есть закономерность, согласно которой вложенные усилия (например, в обучение) повышают шанс на то,
+что и в дальнейшем будут предприниматься усилия («не можем же мы сейчас, когда столько усилий затратили,
+всё бросить! Нужно затратить больше усилий!»).  Можно ожидать больших долей сделавших
+выбор уровня сложности и покупателей среди прошедших тренинг пользователей.
+
+### Анализ события level_choice
+
+#### Количество пользователей, которые сделали выбор уровня сложности
+
+```
+dgolub=> select count(user_id) from evts17 where event_type='level_choice';
+ count 
+-------
+8342
+
+dgolub=> select count(distinct user_id) from evts17 where event_type='level_choice';
+ count 
+-------
+8342
+```
+
+Прекрасно, один и тот же пользователь не выбирает уровень сложности несколько раз.  А сколько
+это будет в процентах от общего числа зарегистрировавшихся?
+
+```
+select round(ls.count*100.0/reg.count,2) as ts_pct
+from
+ (select count(distinct user_id) from evts17 where event_type='level_choice') as ls,
+ (select count(distinct user_id) from evts17 where event_type='registration') as reg;
+ 
+ts_pct 
+--------
+  41.86
+```
+
+Почти 42% пользователей выбирают какой-нибудь уровень сложности.  А зависит ли это от того, прошёл ли 
+пользователь обучение? Или хотя бы начинал ли его проходить?
+
+Нужно придумать общее выражение для ситуации "доля пользователей, совершивших событие B, от пользователей, 
+совершивших событие A".  На помощь приходит `LEFT JOIN`
+
+Начнём с `tutorial_start`, посчитаем по количеству пользователей и процент:
+
+```
+select count(te.user_id) as te, count(ts.user_id) as ts 
+from 
+    (select distinct user_id from evts17 where event_type='tutorial_start') as ts 
+    left join 
+    (select distinct user_id from evts17 where event_type='level_choice') as te using (user_id); 
+    
+  te  |  ts   
+------+-------
+ 8244 | 11858
+(1 row)
+
+select round(count(lc.user_id) * 100 / count(ts.user_id), 2)  as "lvl_choice%" 
+from 
+    (select distinct user_id from evts17 where event_type='tutorial_start') as ts 
+    left join 
+    (select distinct user_id from evts17 where event_type='level_choice') as lc using (user_id);
+
+ lvl_choice% 
+-------------
+       69.00
+(1 row)
+```
+
+Доля выбравших уровень сложности среди начавших обучение пользователей заметно выше, чем среди
+всех пользователей ("валовая").  Посмотрим, поднимается ли эта доля по окончании обучения?
+
+Для `tutorial_finish` аналогично (набрал прямо в `psql`:
+
+```
+dgolub=> select count(lc.user_id) as lc, count(tf.user_id) as tf 
+from  (select distinct user_id from evts17 where event_type='tutorial_finish') as tf 
+left join (select distinct user_id from evts17 where event_type='level_choice') as lc using (user_id); 
+
+  lc  |  tf   
+------+-------
+ 7501 | 10250
+
+dgolub=> select round(100.0 * count(lc.user_id)  / count(tf.user_id), 2)  as "lvl_choice%" 
+from (select distinct user_id from evts17 where event_type='tutorial_finish') as tf 
+left join (select distinct user_id from evts17 where event_type='level_choice') as lc using (user_id); 
+
+ lvl_choice% 
+-------------
+       73.18
+```
+
+Видим, что среди закончивших обучение процент выбравших уровень ещё выше. Для контроля нужно
+расчитать процент пользователей, которые не проходили обучение, но выбрали уровень.
+
+```
+with 
+    curious as (
+        select distinct user_id from evts17 where event_type='tutorial_start'    
+    ),
+    ignorant as (
+        select user_id from evts17 
+        where event_type='registration' and user_id not in (select user_id from curious)
+    ),
+    ignorant_lc as (
+    	select user_id from evts17
+    	where event_type='level_choice' and user_id in (select user_id from ignorant)
+    )
+select 
+    count(lc.user_id) as lvl_choice, 
+    count(ignorant.user_id) as ingorants
+from
+   ignorant left join ignorant_lc as lc using (user_id);
+
+ lvl_choice | ingorants 
+------------+-----------
+         98 |      8068
+```
+
+В процентах это чуть больше 1.2, то есть необходимо зазывать пользователей на обучение.
+
+### Анализ события training_choice
+
+Общее число пользователей. выбравших бесплатные тренировки (`training_choice`):
+
+```
+dgolub=> select count(user_id) from evts17 where event_type='training_choice';
+ count 
+-------
+  5737
+```
+
+И да, я проверил, что `distinct` ничего не меняет — тренировки пользователь выбирает один раз.
+
+> Оценим процент таких пользователей от числа пользователей, которые выбрали уровень сложности:
+
+```
+select round(count(tc.user_id) * 100.0 / count(lc.user_id), 2)  as "trn_choice%" 
+from 
+    (select distinct user_id from evts17 where event_type='level_choice') as lc
+    left join 
+    (select distinct user_id from evts17 where event_type='training_choice') as tc 
+    using (user_id);
+    
+trn_choice% 
+-------------
+       68.77
+```
+
+Не все доходят.  А есть ли среди пользователей этапа выбора тренировок такие, которые не выбирали уровень?
+
+```
+dgolub=> select count(distinct user_id) from evts17 where event_type='training_choice' and user_id not in (select distinct user_id from evts17 where event_type='level_choice');
+ count 
+-------
+     0
+```
+ОК, таких пользователей нет.  Все пользователи, выбравшие бесплатные тренировки, сначала выбирали уровень сложности.
+
+Проверка: замена в запросе `not in` на `in` даёт нам уже известное число пользователей, выбравших бесплатные тренировки.
+
+## Исследование покупателей (таблица `case8.purchase`)
+
+> Рассчитаем процент пользователей percent_of_paying_users, которые оплатили тренировки от числа пользователей, 
+> которые выбрали бесплатные тренировки:
+
+```
+select round(buyers.count*100.0/trained.count,2) as buyers_pct
+from
+ (select count(distinct user_id) from purs17) as buyers,
+ (select count(distinct user_id) from evts17 where event_type='training_choice') as trained;
+ 
+ buyers_pct 
+------------
+      27.89
+```
+
+> Какой процент пользователей, которые оплатили тренировки (от числа зарегистрировавшихся пользователей)?
+
+```
+dgolub=> select round(buyers.count*100.0/reg.count,2) as buyers_pct
+from
+ (select count(distinct user_id) from purs17) as buyers,
+ (select count(distinct user_id) from evts17 where event_type='registration') as reg;
+ buyers_pct 
+------------
+      8.03
+```
+
+Итак, до покупки в 2017 году доходили чуть больше 8% зарегистрированых пользователей.
+
+## Выводы после анализа событий
+
+Все данные по выборке пользователей, зарегистрированных в 2017 году.
+
+ * Количество зарегистрировавшихся пользователей: 19926;
+ * Количество пользователей, начавших обучение : 11858;
+ * % пользователей, начавших обучение (от общего числа зарегистрировавшихся): 59.5;
+ * Количество пользователей, завершивших обучение: 10250;
+ * % пользователей, завершивших обучение (от начавших): 86.4;
+ * Количество пользователей, выбравших уровень сложности: 8342;
+ * % пользователей, выбравших уровень сложности тренировок (от общего числа зарегистрировавшихся): 41.9;
+ * Количество пользователей, выбравших набор бесплатных тренировок: 5737;
+ * % пользователей, выбравших набор бесплатных тренировок (от числа пользователей, которые выбрали уровень сложности): 68.8;
+ * Количество покупателей тренировок: 1600;
+ * % покупателей от числа пользователей, выбравших тренировки: 27.9;
+ * % покупателей от зарегистрированных пользователей: 8.03. 
