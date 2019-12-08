@@ -1,4 +1,4 @@
-# Анализ пользвательских событий (повторяю рассуждения из учебника, но использую по возможности SQL вместо Python.
+# Анализ пользовательских событий (повторяю рассуждения из учебника, но использую по возможности SQL вместо Python).
 
 Мотивация такого подхода: конечно, всё можно загрузить в Pandas и пользоваться его методами.  Но ресурсы компьютера обычно
 ограничены, а тут у нас есть под рукой целая база данных, которая какие надо выборки и сортировки великолепно делает.
@@ -268,7 +268,7 @@ dgolub=> select percentile_cont(0.5) within group (order by amount) from purs17;
 
 Персентиль 50% и есть медиана.
 
-## Анализ событий (табшица events)
+## Анализ событий (таблица `events`)
 
 > Для того, чтобы понимать, как пользователи переходят из этапа в этап, на каких этапах
 > возникают сложности, мы должны определить конверсию на каждом из этапов воронки. То
@@ -512,7 +512,7 @@ dgolub=> select count(distinct user_id) from evts17 where event_type='training_c
 
 Проверка: замена в запросе `not in` на `in` даёт нам уже известное число пользователей, выбравших бесплатные тренировки.
 
-## Исследование покупателей (таблица `case8.purchase`)
+## Исследование покупателей (таблица `purchase`)
 
 > Рассчитаем процент пользователей percent_of_paying_users, которые оплатили тренировки от числа пользователей, 
 > которые выбрали бесплатные тренировки:
@@ -541,6 +541,36 @@ from
 ```
 
 Итак, до покупки в 2017 году доходили чуть больше 8% зарегистрированых пользователей.
+
+А есть ли такие покупатели, которые не выбирали уровень тренировок или не проходили бесплатных тренировок:
+
+```
+dgolub=> select count(distinct user_id) from purs17 where user_id not in (select distinct user_id from evts17 where event_type='level_choice');
+ count 
+-------
+     0
+
+dgolub=> select count(distinct user_id) from purs17 where user_id in (select distinct user_id from evts17 where event_type='level_choice');
+ count 
+-------
+  1600
+```
+
+Аналогично с `training_choice`:
+
+```
+dgolub=> select count(distinct user_id) from purs17 where user_id not in (select distinct user_id from evts17 where event_type='training_choice');
+ count 
+-------
+     0
+
+dgolub=> select count(distinct user_id) from purs17 where user_id in (select distinct user_id from evts17 where event_type='training_choice');
+ count 
+-------
+  1600
+```
+
+Прямой ответ — таких покупателей нет.
 
 ## Выводы после анализа событий
 

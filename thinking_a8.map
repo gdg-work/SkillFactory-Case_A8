@@ -1,0 +1,4 @@
+!include(01_tables_explore.md)
+!include(02_user_paths_analysis.md)
+!include(03_time_analysis.md)
+!include(04_training_relation_with_purchase.md)

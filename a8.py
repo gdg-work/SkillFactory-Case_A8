@@ -50,8 +50,8 @@ def init_connect(conn_string) -> psycopg2.extensions.cursor:
     db_conn = psycopg2.connect(conn_string)
     cursor = None
     if db_conn:
-        dbconn.set_session(readonly=True,autocommit=True)
-        cursor = dbconn.cursor()
+        db_conn.set_session(readonly=True,autocommit=True)
+        cursor = db_conn.cursor()
     return cursor
 
 if __name__ == "__main__":
