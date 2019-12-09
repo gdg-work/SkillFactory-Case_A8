@@ -112,4 +112,202 @@ select distinct user_id from evts17 where event_type='tutorial_start'
  Not started tutorial  |  8068
 ```
 
+Выражения получаются громоздкие, создам представления для каждого из вариантов:
 
+```
+dgolub=> create view c8_finished_tutorial as
+dgolub-> select distinct user_id from evts17 where event_type='tutorial_finish';
+CREATE VIEW
+
+dgolub=> create view c8_started_tutorial as
+dgolub-> select distinct user_id from evts17 where event_type='tutorial_start'
+dgolub-> except
+dgolub-> select distinct user_id from evts17 where event_type='tutorial_finish';
+CREATE VIEW
+
+dgolub=> create view c8_not_started_tutorial as
+dgolub-> select distinct user_id from evts17
+dgolub-> except
+dgolub-> select distinct user_id from evts17 where event_type='tutorial_start';
+CREATE VIEW
+```
+
+## Определение конверсии пользователей в покупателей по группам
+
+Базовый запрос при поиске конверсии и среднего чека будет выглядеть примерно так. Для подсчёта числа покупателей достаточно
+сосчитать значения в колонке 'id', или 'amount', или 'start_time'.
+
+```
+select * from
+c8_finished_tutorial
+left join
+purs17
+using(user_id)
+limit 40;
+
+ user_id |     start_time      | amount |  id
+---------+---------------------+--------+-------
+   44127 |                     |        |
+   ..........
+   37878 | 2017-06-30 17:05:21 |    150 | 17668
+   47216 | 2017-12-22 06:30:31 |     25 | 18396
+   35532 | 2017-05-21 04:23:32 |    150 | 17475
+   41011 |                     |        |
+```
+
+### Группа закончивших обучение:
+
+Конверсия:
+
+```
+dgolub=> select round(count(id)*100.0/count(user_id),1) from
+c8_finished_tutorial
+left join
+purs17
+using(user_id);
+ round 
+-------
+  14.1
+```
+
+Средний чек:
+
+```
+dgolub=> select round(avg(amount), 2) 
+from c8_finished_tutorial
+left join
+purs17
+using(user_id);
+
+ round  
+--------
+ 110.99
+```
+
+Итак, в группе закончивших обучение конверсия 14.1% и средний чек 110 р.
+
+### Группа начавших обучение
+
+Совершенно аналогично:
+
+```
+dgolub=> select round(count(id)*100.0/count(user_id),1) from
+c8_started_tutorial
+left join
+purs17
+using(user_id);
+ round 
+-------
+   8.1
+
+dgolub=> select round(avg(amount), 2) from c8_started_tutorial
+left join
+purs17
+using(user_id);
+ round  
+--------
+ 104.96
+```
+
+В группе начавших обучение конверсия 8.1% и средний чек 104 р.
+
+### Группа не начнавших обучение
+
+```
+dgolub=> select round(count(id)*100.0/count(user_id),1) from
+c8_not_started_tutorial
+left join
+purs17
+using(user_id);
+ round 
+-------
+   0.3
+
+dgolub=> select round(avg(amount), 2) from c8_not_started_tutorial
+left join
+purs17
+using(user_id);
+ round  
+--------
+ 128.41
+```
+
+Эта группа с очень маленькой конверсией (0.3%), но средний чек заметно выше, чем в первых двух группах.
+
+#### Подгруппа: не начинавшие обучение, но сразу выбравшие уровень сложности
+
+Для упрощения выражений тоже создам представление, назову его `c8_hurried_users`:
+
+```
+create view c8_hurried_users as
+select user_id 
+from 
+    c8_not_started_tutorial
+    join
+    evts17  
+    using (user_id)
+where event_type='level_choice';
+```
+
+При запуске этого запроса получаем:
+
+```
+CREATE VIEW
+
+dgolub=> select count(*) from c8_hurried_users;
+ count 
+-------
+    98
+```
+
+Из схем переходов выше мы знаем, что именно это число пользователей выбрало уровень сложности сразу после регистрации.
+
+Посчитаем конверсию в этой подгруппе:
+
+```
+select round(count(id)*100.0/count(user_id),1)
+from
+    c8_hurried_users
+    left join
+    purs17
+    using(user_id);
+```
+
+При запуске получаем:
+
+```
+round 
+-------
+  22.4
+```
+
+И средний чек мы уже знаем:
+
+```
+dgolub=> select round(avg(amount),2)
+from
+    c8_hurried_users
+    left join
+    purs17
+    using(user_id);
+ round  
+--------
+ 128.41
+```
+
+Итак, получили подгруппу с аномально высокой конверсией (22.4%) и высоким средним чеком.  Могу предположить, что это пользователи,
+повторно устанавливающие приложение, например, после ремонта устройства.  В обучении они уже не нуждаются, знают, чего хотят, и 
+готовы за это платить.  Было бы полезно обратить внимание на эту подгруппу пользователей.
+
+Возможно, есть смысл предусмотреть в приложении возможность сохранения состояния в «облако» и его восстановления.
+
+### Итоги изучения конверсии и среднего чека по группам
+
+Подсчёты конверсии и среднего чека по разным группам пользователей подтверждают, что прохождение обучения до конца благотворно
+влияет на желание пользователя оплачивать тренировки.
+
+|  Группа пользователей                             |  Конвесия %   | Средний чек |
+|:--------------------------------------------------|--------------:|------------:|
+| Не проходили обучение                             |       0.3     |     128.41  |
+| Начали обучение, но не закончили                  |       8.1     |     105     |
+| Закончили обучение                                |      14.1     |     111     |

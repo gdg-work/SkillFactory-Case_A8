@@ -2,3 +2,4 @@
 !include(02_user_paths_analysis.md)
 !include(03_time_analysis.md)
 !include(04_training_relation_with_purchase.md)
+!include(05_level_analysis.md)
