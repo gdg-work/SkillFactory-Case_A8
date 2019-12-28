@@ -1,6 +1,6 @@
 #!/bin/bash
 pp thinking_a8.map |
-pandoc -f markdown -t html5 \
+/usr/bin/pandoc -f markdown -t html5 \
    -o /tmp/think.html \
    -F ~/bin/pandoc-filter-graphviz \
    --self-contained \

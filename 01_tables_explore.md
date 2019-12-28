@@ -117,7 +117,7 @@ dgolub=> \d purs17
 
 ```
 
-> К примеру, посмотрим на `events_df`, если оставить в нем только такие строки, где event_type = level_choice:
+> К примеру, посмотрим на `events_df`, если оставить в нем только такие строки, где `event_type` = `level_choice`:
 
 ```
 dgolub=> select 
